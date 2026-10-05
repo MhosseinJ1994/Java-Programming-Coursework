@@ -1,5 +1,15 @@
 plugins {
     id 'java'
+    id 'application'
+}
+
+application {
+    mainClass = 'Main'
+}
+
+// Lets the --console mode read moves typed into the terminal.
+run {
+    standardInput = System.in
 }
 
 group = 'org.example'
@@ -20,6 +30,8 @@ dependencies {
 test {
 //    useJUnitPlatform { excludeTags 'slow' }
     useJUnitPlatform()
+    // GUI tests build Swing panels without opening real windows.
+    systemProperty 'java.awt.headless', 'true'
     testLogging {
         events "passed", "skipped", "failed"
     }

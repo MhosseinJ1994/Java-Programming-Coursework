@@ -3,7 +3,16 @@ import java.util.Scanner;
 
 public class Main {
 
-    static void main() {
+    // Opens the clickable window; pass --console to play in the terminal instead.
+    static void main(String[] args) {
+        if (args.length > 0 && args[0].equals("--console")) {
+            playInConsole();
+        } else {
+            GameWindow.open();
+        }
+    }
+
+    static void playInConsole() {
         Game game = new Game();
         Scanner scanner = new Scanner(System.in);
         System.out.print(game.boardToString());
