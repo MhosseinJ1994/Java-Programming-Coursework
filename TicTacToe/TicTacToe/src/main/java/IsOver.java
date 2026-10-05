@@ -17,4 +17,10 @@ public class IsOver {
         return board[0][2] == symbol && board[1][1] == symbol && board[2][0] == symbol;
     }
 
+    public static boolean isFinished(char[][] board) {
+        return gameOver(board, 'X')
+                || gameOver(board, 'O')
+                || BoardStructure.getEmptyCells(board).length == 0;
+    }
+
 }

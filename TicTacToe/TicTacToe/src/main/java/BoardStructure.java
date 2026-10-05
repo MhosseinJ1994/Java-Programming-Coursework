@@ -1,8 +1,8 @@
 import java.util.stream.IntStream;
 
 public class BoardStructure {
-    private static final int ROWS = 3;
-    private static final int COLS = 3;
+    static final int ROWS = 3;
+    static final int COLS = 3;
     static String boardToString(char[][] board) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ROWS; i++) {

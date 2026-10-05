@@ -111,6 +111,24 @@ public class IsOverTest {
         assertThat(IsOver.gameOver(board,'X')).isFalse();
         assertThat(IsOver.gameOver(board,'O')).isFalse();
     }
+    @Test
+    @DisplayName("Full board with no winner is finished")
+    void test11() {
+        assertThat(IsOver.isFinished(board1)).isTrue();
+    }
+    @Test
+    @DisplayName("Fresh board is not finished")
+    void test12() {
+        assertThat(IsOver.isFinished(board)).isFalse();
+    }
+    @Test
+    @DisplayName("Board with a winner is finished even with empty cells")
+    void test13() {
+        board[0][0] = 'O';
+        board[1][1] = 'O';
+        board[2][2] = 'O';
+        assertThat(IsOver.isFinished(board)).isTrue();
+    }
 }
 
 
