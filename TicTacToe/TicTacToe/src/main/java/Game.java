@@ -23,8 +23,13 @@ public class Game {
     }
 
     public void reset() {
+        reset(PLAYER);
+    }
+
+    // firstTurn is PLAYER or COMPUTER: who makes the first move of this round.
+    public void reset(char firstTurn) {
         BoardStructure.fillBoard(board);
-        currentTurn = PLAYER;
+        currentTurn = firstTurn;
     }
 
     // Returns false (and changes nothing) if the move isn't allowed right now.

@@ -11,9 +11,9 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 
-// The clickable board. Every click goes through Game, then refresh() redraws
-// everything from the Game state so the screen can never disagree with the rules.
-// Buttons are never disabled (Swing would grey out the X/O colours); Game itself
+// The clickable board. Every click goes through Game/Match, then refresh() redraws
+// everything from their state so the screen can never disagree with the rules.
+// Cell buttons are never disabled (Swing would grey out the X/O colours); Game itself
 // ignores clicks on taken cells, after the game ends, or while the computer thinks.
 public class GamePanel extends JPanel {
     static final int COMPUTER_DELAY_MS = 700;
@@ -24,21 +24,26 @@ public class GamePanel extends JPanel {
     private static final Color CELL_BORDER = new Color(0xB0B0B0);
     private static final Font CELL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 48);
     private static final Font STATUS_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 18);
+    private static final Font SCORE_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
 
+    private final Match match;
     private final Game game;
     private final JButton[] cells = new JButton[9];
     private final JLabel status = new JLabel("", SwingConstants.CENTER);
-    private final JButton newGame = new JButton("New Game");
+    private final JLabel score = new JLabel("", SwingConstants.CENTER);
+    private final JButton nextRound = new JButton("Next Round");
+    private final JButton newMatch = new JButton("New Match");
     // Waits without freezing the window, then runs the computer's move on the EDT.
     private final Timer computerTimer;
 
-    public GamePanel(Game game) {
-        this(game, COMPUTER_DELAY_MS);
+    public GamePanel(Match match) {
+        this(match, COMPUTER_DELAY_MS);
     }
 
     // Tests pass a short delay so they don't have to wait 0.7s per move.
-    GamePanel(Game game, int computerDelayMs) {
-        this.game = game;
+    GamePanel(Match match, int computerDelayMs) {
+        this.match = match;
+        this.game = match.getGame();
         computerTimer = new Timer(computerDelayMs, e -> computerTurn());
         computerTimer.setRepeats(false);
 
@@ -46,7 +51,11 @@ public class GamePanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
         status.setFont(STATUS_FONT);
-        add(status, BorderLayout.NORTH);
+        score.setFont(SCORE_FONT);
+        JPanel top = new JPanel(new GridLayout(2, 1, 0, 4));
+        top.add(score);
+        top.add(status);
+        add(top, BorderLayout.NORTH);
 
         JPanel grid = new JPanel(new GridLayout(3, 3, 6, 6));
         for (int i = 0; i < cells.length; i++) {
@@ -66,21 +75,36 @@ public class GamePanel extends JPanel {
         }
         add(grid, BorderLayout.CENTER);
 
-        newGame.addActionListener(e -> {
-            computerTimer.stop();   // cancel a computer move that is still waiting
-            game.reset();
-            refresh();
+        nextRound.addActionListener(e -> {
+            match.nextRound();
+            startRound();
         });
-        add(newGame, BorderLayout.SOUTH);
+        newMatch.addActionListener(e -> {
+            computerTimer.stop();   // cancel a computer move that is still waiting
+            match.newMatch();
+            startRound();
+        });
+        JPanel buttons = new JPanel(new GridLayout(1, 2, 6, 0));
+        buttons.add(nextRound);
+        buttons.add(newMatch);
+        add(buttons, BorderLayout.SOUTH);
 
+        startRound();
+    }
+
+    // In round 2 the computer goes first, so it has to be woken up here.
+    private void startRound() {
         refresh();
+        if (game.getCurrentTurn() == Game.COMPUTER) {
+            computerTimer.restart();
+        }
     }
 
     private void onCellClicked(int cell) {
         if (!game.playerMove(cell)) {
             return;
         }
-        refresh();   // show the player's X straight away
+        afterMove();
         if (game.getStatus() == Game.Status.IN_PROGRESS) {
             computerTimer.restart();
         }
@@ -88,6 +112,14 @@ public class GamePanel extends JPanel {
 
     private void computerTurn() {
         game.computerMove();
+        afterMove();
+    }
+
+    // The only place a finished round is added to the score.
+    private void afterMove() {
+        if (game.getStatus() != Game.Status.IN_PROGRESS) {
+            match.recordRound();
+        }
         refresh();
     }
 
@@ -103,17 +135,29 @@ public class GamePanel extends JPanel {
             button.setCursor(Cursor.getPredefinedCursor(
                     empty && playersTurn ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
         }
+        score.setText("Round " + match.getRound() + " of " + Match.TOTAL_ROUNDS
+                + "   ·   You " + match.getPlayerWins()
+                + "  Computer " + match.getComputerWins()
+                + "  Ties " + match.getTies());
         status.setText(statusMessage());
+        nextRound.setEnabled(match.isRoundOver() && !match.isMatchOver());
     }
 
     private String statusMessage() {
+        if (match.isMatchOver()) {
+            return switch (match.getResult()) {
+                case PLAYER_WINS -> "You won the match!";
+                case COMPUTER_WINS -> "Computer won the match!";
+                case TIE -> "The match is a tie!";
+            };
+        }
         return switch (game.getStatus()) {
             case IN_PROGRESS -> game.getCurrentTurn() == Game.PLAYER
                     ? "Your turn (X)"
                     : "Computer thinking…";
-            case X_WINS -> "You Won!";
-            case O_WINS -> "Computer Won!";
-            case TIE -> "It's a Tie";
+            case X_WINS -> "You won round " + match.getRound() + "!";
+            case O_WINS -> "Computer won round " + match.getRound() + "!";
+            case TIE -> "Round " + match.getRound() + " is a tie";
         };
     }
 
@@ -130,11 +174,19 @@ public class GamePanel extends JPanel {
         return computerTimer.isRunning();
     }
 
-    JButton getNewGameButton() {
-        return newGame;
+    JButton getNextRoundButton() {
+        return nextRound;
+    }
+
+    JButton getNewMatchButton() {
+        return newMatch;
     }
 
     String getStatusText() {
         return status.getText();
+    }
+
+    String getScoreText() {
+        return score.getText();
     }
 }

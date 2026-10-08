@@ -7,7 +7,7 @@ public class GameWindow {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Tic-Tac-Toe");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setContentPane(new GamePanel(new Game()));
+            frame.setContentPane(new GamePanel(new Match()));
             frame.pack();
             frame.setResizable(false);
             frame.setLocationRelativeTo(null);

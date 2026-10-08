@@ -15,7 +15,7 @@ public class GamePanelTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        onEdt(() -> panel = new GamePanel(new Game(new GameTest.LowestCellRandom()), TEST_DELAY_MS));
+        onEdt(() -> panel = new GamePanel(new Match(new Game(new GameTest.LowestCellRandom())), TEST_DELAY_MS));
     }
 
     // Swing objects must only be touched on the EDT, in tests too.
@@ -85,7 +85,7 @@ public class GamePanelTest {
     @DisplayName("Player win is shown and the board locks")
     void test4() throws Exception {
         click(9, 8, 7);
-        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("You Won!");
+        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("You won round 1!");
         for (int cell = 1; cell <= 9; cell++) {
             int c = cell;
             assertThat(readOnEdt(() -> panel.looksClickable(c))).isFalse();
@@ -96,14 +96,14 @@ public class GamePanelTest {
     @DisplayName("Computer win is shown")
     void test5() throws Exception {
         click(9, 8, 5);
-        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("Computer Won!");
+        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("Computer won round 1!");
     }
 
     @Test
     @DisplayName("Tie is shown")
     void test6() throws Exception {
         click(2, 4, 5, 7, 9);
-        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("It's a Tie");
+        assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("Round 1 is a tie");
     }
 
     @Test
@@ -115,10 +115,10 @@ public class GamePanelTest {
     }
 
     @Test
-    @DisplayName("New Game clears the board")
+    @DisplayName("New Match clears the board")
     void test8() throws Exception {
         click(9, 8, 7);
-        onEdt(() -> panel.getNewGameButton().doClick(0));
+        onEdt(() -> panel.getNewMatchButton().doClick(0));
         assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("Your turn (X)");
         for (int cell = 1; cell <= 9; cell++) {
             int c = cell;
@@ -158,11 +158,11 @@ public class GamePanelTest {
     }
 
     @Test
-    @DisplayName("New Game while the computer is thinking cancels its move")
+    @DisplayName("New Match while the computer is thinking cancels its move")
     void test11() throws Exception {
         onEdt(() -> {
             panel.getCellButton(9).doClick(0);
-            panel.getNewGameButton().doClick(0);
+            panel.getNewMatchButton().doClick(0);
         });
         assertThat(readOnEdt(() -> panel.isComputerThinking())).isFalse();
 
@@ -171,5 +171,91 @@ public class GamePanelTest {
             assertThat(text(cell)).isEmpty();
         }
         assertThat(readOnEdt(() -> panel.getStatusText())).isEqualTo("Your turn (X)");
+    }
+
+    private String status() throws Exception {
+        return readOnEdt(() -> panel.getStatusText());
+    }
+
+    private boolean nextRoundEnabled() throws Exception {
+        return readOnEdt(() -> panel.getNextRoundButton().isEnabled());
+    }
+
+    private void pressNextRound() throws Exception {
+        onEdt(() -> panel.getNextRoundButton().doClick(0));
+        waitForComputer();   // in round 2 the computer moves first
+    }
+
+    @Test
+    @DisplayName("Score line starts at round 1 with no points")
+    void test12() throws Exception {
+        assertThat(readOnEdt(() -> panel.getScoreText()))
+                .isEqualTo("Round 1 of 3   ·   You 0  Computer 0  Ties 0");
+    }
+
+    @Test
+    @DisplayName("Next Round is only available after a round ends")
+    void test13() throws Exception {
+        assertThat(nextRoundEnabled()).isFalse();
+        click(9);
+        assertThat(nextRoundEnabled()).isFalse();
+        click(8, 7);
+        assertThat(nextRoundEnabled()).isTrue();
+        assertThat(readOnEdt(() -> panel.getScoreText()))
+                .isEqualTo("Round 1 of 3   ·   You 1  Computer 0  Ties 0");
+    }
+
+    @Test
+    @DisplayName("In round 2 the computer moves first by itself")
+    void test14() throws Exception {
+        click(9, 8, 7);
+        onEdt(() -> panel.getNextRoundButton().doClick(0));
+        assertThat(status()).isEqualTo("Computer thinking…");
+        assertThat(text(9)).isEmpty();
+
+        waitForComputer();
+        assertThat(text(1)).isEqualTo("O");
+        assertThat(status()).isEqualTo("Your turn (X)");
+        assertThat(readOnEdt(() -> panel.getScoreText())).startsWith("Round 2 of 3");
+    }
+
+    @Test
+    @DisplayName("Full match: player wins 2-1, then New Match starts over")
+    void test15() throws Exception {
+        click(9, 8, 7);           // round 1: player wins
+        pressNextRound();
+        click(9, 8);              // round 2: computer wins
+        assertThat(status()).isEqualTo("Computer won round 2!");
+        pressNextRound();
+        click(9, 8, 7);           // round 3: player wins
+
+        assertThat(status()).isEqualTo("You won the match!");
+        assertThat(readOnEdt(() -> panel.getScoreText()))
+                .isEqualTo("Round 3 of 3   ·   You 2  Computer 1  Ties 0");
+        assertThat(nextRoundEnabled()).isFalse();
+
+        onEdt(() -> panel.getNewMatchButton().doClick(0));
+        assertThat(readOnEdt(() -> panel.getScoreText()))
+                .isEqualTo("Round 1 of 3   ·   You 0  Computer 0  Ties 0");
+        assertThat(status()).isEqualTo("Your turn (X)");
+    }
+
+    @Test
+    @DisplayName("Match result shows a computer win and a tie")
+    void test16() throws Exception {
+        click(9, 8, 5);           // round 1: computer wins
+        pressNextRound();
+        click(9, 8);              // round 2: computer wins
+        pressNextRound();
+        click(2, 4, 5, 7, 9);     // round 3: tie
+        assertThat(status()).isEqualTo("Computer won the match!");
+
+        onEdt(() -> panel.getNewMatchButton().doClick(0));
+        click(9, 8, 7);
+        pressNextRound();
+        click(9, 8);
+        pressNextRound();
+        click(2, 4, 5, 7, 9);
+        assertThat(status()).isEqualTo("The match is a tie!");
     }
 }

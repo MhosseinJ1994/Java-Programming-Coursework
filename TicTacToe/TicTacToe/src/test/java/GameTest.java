@@ -127,4 +127,14 @@ public class GameTest {
         assertThat(game.getCurrentTurn()).isEqualTo('X');
         assertThat(game.getCell(9)).isEqualTo('9');
     }
+
+    @Test
+    @DisplayName("Reset can let the computer go first")
+    void test12() {
+        game.reset(Game.COMPUTER);
+        assertThat(game.getCurrentTurn()).isEqualTo('O');
+        assertThat(game.playerMove(5)).isFalse();
+        assertThat(game.computerMove()).isEqualTo(1);
+        assertThat(game.getCurrentTurn()).isEqualTo('X');
+    }
 }
