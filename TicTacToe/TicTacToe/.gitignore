@@ -41,3 +41,5 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+### Player scores (personal, created when you play) ###
+leaderboard.csv

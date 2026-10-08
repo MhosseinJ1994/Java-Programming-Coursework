@@ -1,15 +1,21 @@
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.io.IOException;
+import java.util.List;
 
 // The clickable board. Every click goes through Game/Match, then refresh() redraws
 // everything from their state so the screen can never disagree with the rules.
@@ -17,6 +23,7 @@ import java.awt.GridLayout;
 // ignores clicks on taken cells, after the game ends, or while the computer thinks.
 public class GamePanel extends JPanel {
     static final int COMPUTER_DELAY_MS = 700;
+    static final int LEADERBOARD_SIZE = 10;
 
     private static final Color X_COLOR = new Color(0x1E6FD9);
     private static final Color O_COLOR = new Color(0xD9431E);
@@ -28,22 +35,28 @@ public class GamePanel extends JPanel {
 
     private final Match match;
     private final Game game;
+    private final Leaderboard leaderboard;
+    private final String playerName;
+    private boolean saveFailed;
     private final JButton[] cells = new JButton[9];
     private final JLabel status = new JLabel("", SwingConstants.CENTER);
     private final JLabel score = new JLabel("", SwingConstants.CENTER);
     private final JButton nextRound = new JButton("Next Round");
     private final JButton newMatch = new JButton("New Match");
+    private final JButton showLeaderboard = new JButton("Leaderboard");
     // Waits without freezing the window, then runs the computer's move on the EDT.
     private final Timer computerTimer;
 
-    public GamePanel(Match match) {
-        this(match, COMPUTER_DELAY_MS);
+    public GamePanel(Match match, Leaderboard leaderboard, String playerName) {
+        this(match, leaderboard, playerName, COMPUTER_DELAY_MS);
     }
 
     // Tests pass a short delay so they don't have to wait 0.7s per move.
-    GamePanel(Match match, int computerDelayMs) {
+    GamePanel(Match match, Leaderboard leaderboard, String playerName, int computerDelayMs) {
         this.match = match;
         this.game = match.getGame();
+        this.leaderboard = leaderboard;
+        this.playerName = playerName;
         computerTimer = new Timer(computerDelayMs, e -> computerTurn());
         computerTimer.setRepeats(false);
 
@@ -82,11 +95,14 @@ public class GamePanel extends JPanel {
         newMatch.addActionListener(e -> {
             computerTimer.stop();   // cancel a computer move that is still waiting
             match.newMatch();
+            saveFailed = false;
             startRound();
         });
-        JPanel buttons = new JPanel(new GridLayout(1, 2, 6, 0));
+        showLeaderboard.addActionListener(e -> showLeaderboard());
+        JPanel buttons = new JPanel(new GridLayout(1, 3, 6, 0));
         buttons.add(nextRound);
         buttons.add(newMatch);
+        buttons.add(showLeaderboard);
         add(buttons, BorderLayout.SOUTH);
 
         startRound();
@@ -115,12 +131,59 @@ public class GamePanel extends JPanel {
         afterMove();
     }
 
-    // The only place a finished round is added to the score.
+    // The only place a finished round is added to the score,
+    // and a finished match is added to the leaderboard.
     private void afterMove() {
         if (game.getStatus() != Game.Status.IN_PROGRESS) {
             match.recordRound();
+            if (match.isMatchOver()) {
+                saveMatch();
+            }
         }
         refresh();
+    }
+
+    private void saveMatch() {
+        leaderboard.recordMatch(playerName, match);
+        try {
+            leaderboard.save();
+        } catch (IOException e) {
+            saveFailed = true;   // keep playing; just tell the player
+        }
+    }
+
+    private void showLeaderboard() {
+        if (leaderboard.top(LEADERBOARD_SIZE).isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No matches finished yet.",
+                    "Leaderboard", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JTable table = buildLeaderboardTable();
+        table.setPreferredScrollableViewportSize(new Dimension(420, table.getRowHeight() * LEADERBOARD_SIZE));
+        JOptionPane.showMessageDialog(this, new JScrollPane(table),
+                "Leaderboard – Top " + LEADERBOARD_SIZE, JOptionPane.PLAIN_MESSAGE);
+    }
+
+    JTable buildLeaderboardTable() {
+        String[] columns = {"#", "Name", "Won", "Lost", "Tied", "Played", "Rounds won"};
+        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;   // the table is only for reading
+            }
+
+            @Override
+            public Class<?> getColumnClass(int column) {
+                return column == 1 ? String.class : Integer.class;   // numbers line up on the right
+            }
+        };
+        List<Leaderboard.Entry> top = leaderboard.top(LEADERBOARD_SIZE);
+        for (int i = 0; i < top.size(); i++) {
+            Leaderboard.Entry e = top.get(i);
+            model.addRow(new Object[] {
+                    i + 1, e.name(), e.won(), e.lost(), e.tied(), e.played(), e.roundsWon()});
+        }
+        return new JTable(model);
     }
 
     private void refresh() {
@@ -145,11 +208,12 @@ public class GamePanel extends JPanel {
 
     private String statusMessage() {
         if (match.isMatchOver()) {
-            return switch (match.getResult()) {
+            String result = switch (match.getResult()) {
                 case PLAYER_WINS -> "You won the match!";
                 case COMPUTER_WINS -> "Computer won the match!";
                 case TIE -> "The match is a tie!";
             };
+            return saveFailed ? result + " (score not saved)" : result;
         }
         return switch (game.getStatus()) {
             case IN_PROGRESS -> game.getCurrentTurn() == Game.PLAYER

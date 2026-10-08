@@ -1,21 +1,37 @@
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import javax.swing.JTable;
 import javax.swing.SwingUtilities;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class GamePanelTest {
     static final int TEST_DELAY_MS = 20;
 
+    @TempDir
+    Path tempDir;
+
+    Path file;
+    Leaderboard leaderboard;
     GamePanel panel;
 
     @BeforeEach
     void setUp() throws Exception {
-        onEdt(() -> panel = new GamePanel(new Match(new Game(new GameTest.LowestCellRandom())), TEST_DELAY_MS));
+        file = tempDir.resolve("leaderboard.csv");
+        leaderboard = new Leaderboard(file);
+        onEdt(() -> panel = newPanel(leaderboard));
+    }
+
+    private GamePanel newPanel(Leaderboard board) {
+        return new GamePanel(new Match(new Game(new GameTest.LowestCellRandom())),
+                board, "Ali", TEST_DELAY_MS);
     }
 
     // Swing objects must only be touched on the EDT, in tests too.
@@ -257,5 +273,68 @@ public class GamePanelTest {
         pressNextRound();
         click(2, 4, 5, 7, 9);
         assertThat(status()).isEqualTo("The match is a tie!");
+    }
+
+    // Round 1 player wins, round 2 computer wins, round 3 player wins.
+    private void playMatchPlayerWins2to1() throws Exception {
+        click(9, 8, 7);
+        pressNextRound();
+        click(9, 8);
+        pressNextRound();
+        click(9, 8, 7);
+    }
+
+    @Test
+    @DisplayName("Nothing is saved before the match is over")
+    void test17() throws Exception {
+        click(9, 8, 7);
+        pressNextRound();
+        click(9, 8);
+        assertThat(leaderboard.get("Ali")).isNull();
+        assertThat(Files.exists(file)).isFalse();
+    }
+
+    @Test
+    @DisplayName("A finished match is saved to the leaderboard file")
+    void test18() throws Exception {
+        playMatchPlayerWins2to1();
+        assertThat(leaderboard.get("Ali"))
+                .isEqualTo(new Leaderboard.Entry("Ali", 1, 1, 0, 0, 2));
+        assertThat(Files.readAllLines(file)).contains("Ali,1,1,0,0,2");
+    }
+
+    @Test
+    @DisplayName("Two matches add up for the same player")
+    void test19() throws Exception {
+        playMatchPlayerWins2to1();
+        onEdt(() -> panel.getNewMatchButton().doClick(0));
+        playMatchPlayerWins2to1();
+        assertThat(Leaderboard.load(file).get("Ali"))
+                .isEqualTo(new Leaderboard.Entry("Ali", 2, 2, 0, 0, 4));
+    }
+
+    @Test
+    @DisplayName("Leaderboard table shows rank, name and totals")
+    void test20() throws Exception {
+        playMatchPlayerWins2to1();
+        JTable table = readOnEdt(() -> panel.buildLeaderboardTable());
+        assertThat(table.getRowCount()).isEqualTo(1);
+        assertThat(table.getColumnName(1)).isEqualTo("Name");
+        assertThat(table.getValueAt(0, 0)).isEqualTo(1);
+        assertThat(table.getValueAt(0, 1)).isEqualTo("Ali");
+        assertThat(table.getValueAt(0, 2)).isEqualTo(1);      // won
+        assertThat(table.getValueAt(0, 6)).isEqualTo(2);      // rounds won
+        assertThat(table.isCellEditable(0, 1)).isFalse();
+    }
+
+    @Test
+    @DisplayName("If saving fails the game says so and keeps working")
+    void test21() throws Exception {
+        onEdt(() -> panel = newPanel(new Leaderboard(tempDir)));   // a folder can't be written as a file
+        playMatchPlayerWins2to1();
+        assertThat(status()).isEqualTo("You won the match! (score not saved)");
+
+        onEdt(() -> panel.getNewMatchButton().doClick(0));
+        assertThat(status()).isEqualTo("Your turn (X)");
     }
 }
