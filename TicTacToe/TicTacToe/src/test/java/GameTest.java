@@ -20,7 +20,7 @@ public class GameTest {
 
     @BeforeEach
     void setUp() {
-        game = new Game(new LowestCellRandom());
+        game = new Game(new RandomMoveStrategy(new GameTest.LowestCellRandom()));
     }
 
     private void play(int... cells) {

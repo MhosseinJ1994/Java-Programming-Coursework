@@ -30,7 +30,7 @@ public class GamePanelTest {
     }
 
     private GamePanel newPanel(Leaderboard board) {
-        return new GamePanel(new Match(new Game(new GameTest.LowestCellRandom())),
+        return new GamePanel(new Match(new Game(new RandomMoveStrategy(new GameTest.LowestCellRandom()))),
                 board, "Ali", TEST_DELAY_MS);
     }
 

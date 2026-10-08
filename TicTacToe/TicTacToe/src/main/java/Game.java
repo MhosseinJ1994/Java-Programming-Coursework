@@ -9,16 +9,16 @@ public class Game {
     static final char COMPUTER = 'O';
 
     private final char[][] board = new char[BoardStructure.ROWS][BoardStructure.COLS];
-    private final Random random;
+    private final MoveStrategy moveStrategy;
     private char currentTurn;
 
     public Game() {
-        this(new Random());
+        this(new RandomMoveStrategy(new Random()));
     }
 
     // Tests pass their own Random so the computer's moves are predictable.
-    Game(Random random) {
-        this.random = random;
+    Game(MoveStrategy moveStrategy) {
+        this.moveStrategy = moveStrategy;
         reset();
     }
 
@@ -49,8 +49,7 @@ public class Game {
         if (getStatus() != Status.IN_PROGRESS || currentTurn != COMPUTER) {
             throw new IllegalStateException("It is not the computer's turn");
         }
-        int[] pos = Move.getComputerNumber(board, random);
-        int cell = pos[0] * BoardStructure.COLS + pos[1] + 1;
+        int cell = moveStrategy.chooseMove(board);
         place(cell, COMPUTER);
         currentTurn = PLAYER;
         return cell;

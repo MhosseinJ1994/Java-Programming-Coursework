@@ -26,7 +26,7 @@ public class LeaderboardTest {
     // Plays a whole 3-round match where the player wins the given rounds
     // (true = player wins that round, false = computer wins).
     private Match matchWhere(boolean... playerWinsRound) {
-        Game game = new Game(new GameTest.LowestCellRandom());
+        Game game = new Game(new RandomMoveStrategy(new GameTest.LowestCellRandom()));
         Match match = new Match(game);
         for (int round = 0; round < Match.TOTAL_ROUNDS; round++) {
             if (round > 0) {
@@ -76,7 +76,7 @@ public class LeaderboardTest {
     @Test
     @DisplayName("An unfinished match can't be recorded")
     void test4() {
-        Match match = new Match(new Game(new GameTest.LowestCellRandom()));
+        Match match = new Match(new Game(new RandomMoveStrategy(new GameTest.LowestCellRandom())));
         assertThatThrownBy(() -> leaderboard.recordMatch("Ali", match))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(leaderboard.get("Ali")).isNull();

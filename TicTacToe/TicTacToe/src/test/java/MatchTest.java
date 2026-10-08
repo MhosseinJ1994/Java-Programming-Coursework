@@ -11,7 +11,7 @@ public class MatchTest {
 
     @BeforeEach
     void setUp() {
-        game = new Game(new GameTest.LowestCellRandom());
+        game = new Game(new RandomMoveStrategy(new GameTest.LowestCellRandom()));
         match = new Match(game);
     }
 
