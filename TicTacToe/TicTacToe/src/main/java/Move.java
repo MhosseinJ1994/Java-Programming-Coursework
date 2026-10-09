@@ -9,8 +9,8 @@ public class Move {
 
     static int findWinningCell(char[][] board, char symbol) {
         int[] emptyCells = BoardStructure.getEmptyCells(board);
-        boolean winner = false;
         for(int cell:emptyCells){
+            boolean winner = false;
             int[] spot = numberInBoard(cell);
             board[spot[0]][spot[1]] = symbol;
             if(IsOver.gameOver(board,symbol)) {

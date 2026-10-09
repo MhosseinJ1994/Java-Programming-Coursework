@@ -14,7 +14,8 @@ public class Game {
         this(new SmartMoveStrategy());
     }
 
-    // Tests pass their own Random so the computer's moves are predictable.
+    // Lets you choose how the computer plays, e.g. RandomMoveStrategy or SmartMoveStrategy.
+    // Tests pass a predictable strategy so they know which cell the computer takes.
     Game(MoveStrategy moveStrategy) {
         this.moveStrategy = moveStrategy;
         reset();

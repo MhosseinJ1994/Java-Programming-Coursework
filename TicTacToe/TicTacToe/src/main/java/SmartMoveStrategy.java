@@ -2,7 +2,7 @@ import java.util.Random;
 
 public class SmartMoveStrategy implements MoveStrategy{
     private final RandomMoveStrategy fallback = new RandomMoveStrategy(new Random());
-    private static final int[] corners = {1,3,7,9};
+    private static final int[] CORNERS = {1,3,7,9};
 
     @Override
     public int chooseMove(char[][] board) {
@@ -19,7 +19,7 @@ public class SmartMoveStrategy implements MoveStrategy{
         if(!ValidInput.isInvalid(5,board)) {
             return 5;
         }
-        for(int corner : corners) {
+        for(int corner : CORNERS) {
             if(!ValidInput.isInvalid(corner,board)) {
                 return corner;
             }
