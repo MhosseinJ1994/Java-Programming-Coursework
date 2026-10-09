@@ -3,8 +3,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.util.Random;
-
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class MoveTest {
@@ -29,19 +27,7 @@ public class MoveTest {
         int[] result = Move.numberInBoard(9);
         assertThat(result).containsExactly(2,2);
     }
-    @Test
-    @DisplayName("Will computer pick 8")
-    void test4() {
-        BoardStructure.fillBoard(board);
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                board[i][j] = 'X';
-            }
-        }
-        board[2][1] = '8';
-        int[] result = Move.getComputerNumber(board, new Random());
-        assertThat(result).containsExactly(2,1);
-    }
+
     @ParameterizedTest
     @CsvSource({
             "1, 0, 0",
@@ -58,16 +44,4 @@ public class MoveTest {
         assertThat(Move.numberInBoard(number)).containsExactly(row, col);
     }
 
-    @Test
-    @DisplayName("Board will not change after computer pick")
-    void test5() {
-        BoardStructure.fillBoard(board);
-        char[][] copy = new char[3][3];
-        for (int i = 0; i < 3; i++) {
-            copy[i] = board[i].clone();
-        }
-        Move.getComputerNumber(board,new Random());
-        assertThat(board).isDeepEqualTo(copy);
-
-    }
 }

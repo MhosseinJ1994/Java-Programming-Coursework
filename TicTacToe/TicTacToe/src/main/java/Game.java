@@ -1,5 +1,3 @@
-import java.util.Random;
-
 // One round of tic-tac-toe. Holds the board and whose turn it is,
 // but never reads input or prints, so both the console and a GUI can use it.
 public class Game {
@@ -13,7 +11,7 @@ public class Game {
     private char currentTurn;
 
     public Game() {
-        this(new RandomMoveStrategy(new Random()));
+        this(new SmartMoveStrategy());
     }
 
     // Tests pass their own Random so the computer's moves are predictable.
